@@ -59,6 +59,27 @@ function formatDataJson(data) {
   return formattedData;
 }
 
+// Mapeo de dificultades en español e inglés
+const dificultadMap = {
+  fácil: 'easy',
+  easy: 'easy',
+  medio: 'medium',
+  media: 'medium',
+  medium: 'medium',
+  difícil: 'hard',
+  dificil: 'hard',
+  hard: 'hard',
+  insano: 'insane',
+  insane: 'insane'
+};
+
+/**
+ * Normaliza el término de dificultad a un valor estándar
+ */
+function normalizeDificultad(dificultad) {
+  return dificultadMap[dificultad.toLowerCase()] || dificultad.toLowerCase();
+}
+
 // Configurar rutas
 app.get('/api/boxes', async (req, res) => {
   const data = await getSheetData();
@@ -84,7 +105,6 @@ app.get('/api/box/:nombre', async (req, res) => {
   return res.status(404).json({ error: "Box no encontrado" });
 });
 
-// Nuevo endpoint: Buscar boxes por certificación
 app.get('/api/certs/:certificacion', async (req, res) => {
   const certificacion = req.params.certificacion;
   const data = await getSheetData();
@@ -93,7 +113,6 @@ app.get('/api/certs/:certificacion', async (req, res) => {
   }
   const formattedData = formatDataJson(data);
   
-  // Filtrar boxes que incluyan la certificación (ignorando mayúsculas/minúsculas)
   const matchingBoxes = formattedData.filter(box => 
     box.certificaciones.toLowerCase().includes(certificacion.toLowerCase())
   );
@@ -104,14 +123,36 @@ app.get('/api/certs/:certificacion', async (req, res) => {
   return res.status(404).json({ error: `No se encontraron boxes con la certificación "${certificacion}"` });
 });
 
+// Nuevo endpoint: Filtrar boxes por dificultad
+app.get('/api/dificultad/:dificultad', async (req, res) => {
+  const dificultad = req.params.dificultad;
+  const normalizedDificultad = normalizeDificultad(dificultad);
+  const data = await getSheetData();
+  if (data.error) {
+    return res.status(500).json(data);
+  }
+  const formattedData = formatDataJson(data);
+  
+  // Filtrar boxes cuya dificultad normalizada coincida
+  const matchingBoxes = formattedData.filter(box => 
+    normalizeDificultad(box.Dificultad) === normalizedDificultad
+  );
+  
+  if (matchingBoxes.length > 0) {
+    return res.json(matchingBoxes);
+  }
+  return res.status(404).json({ error: `No se encontraron boxes con la dificultad "${dificultad}"` });
+});
+
 app.get('/', (req, res) => {
   res.send(`
     <h1>API de HackTheBox</h1>
     <p>Endpoints disponibles:</p>
     <ul>
       <li>/api/boxes - Obtener todos los boxes</li>
-      <li>/api/box/&lt;nombre&gt; - Obtener un box específico por nombre</li>
-      <li>/api/certs/&lt;certificacion&gt; - Obtener todos los boxes con una certificación específica (ej. OSCP)</li>
+      <li>/api/box/<nombre> - Obtener un box específico por nombre</li>
+      <li>/api/certs/<certificacion> - Obtener todos los boxes con una certificación específica (ej. OSCP)</li>
+      <li>/api/dificultad/<dificultad> - Obtener todos los boxes con una dificultad específica (ej. Fácil, Easy, Media, Medium, Difícil, Hard)</li>
     </ul>
   `);
 });
