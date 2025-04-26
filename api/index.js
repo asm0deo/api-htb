@@ -7,7 +7,7 @@ app.use(cors());
 
 // Configuración de Google Sheets
 const SHEET_ID = "1dzvaGlT_0xnT-PGO27Z_4prHgA8PHIpErmoWdlUrSoA";
-const API_KEY = "AIzaSyDzztAdQMG0a98HG4hgDAh0RXK7tBCW5Cg";
+const API_KEY = process.env.GOOGLE_SHEETS_API_KEY || "AIzaSyDzztAdQMG0a98HG4hgDAh0RXK7tBCW5Cg";
 const URL = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/HackTheBox?key=${API_KEY}`;
 
 /**
@@ -29,22 +29,17 @@ function formatDataJson(data) {
   const formattedData = [];
   
   if ("values" in data) {
-    // Comenzar desde la fila 5 (índice 4 en la lista)
     const rows = data.values.slice(4);
     
     for (const row of rows) {
-      // Asegurarse de que haya suficientes columnas
       if (row.length >= 7) {
-        // Procesar cada columna y reemplazar saltos de línea por comas
-        const nombre = row[0];
-        const ip = row[1];
-        const os = row[2];
-        const dificultad = row[3];
-        
-        // Reemplazar saltos de línea por comas
-        const tecnicas = row[4].includes("\n") ? row[4].replace(/\n/g, ", ") : row[4];
-        const certificaciones = row[5].includes("\n") ? row[5].replace(/\n/g, ", ") : row[5];
-        const writeup = row[6].includes("\n") ? row[6].replace(/\n/g, ", ") : row[6];
+        const nombre = row[0] || '';
+        const ip = row[1] || '';
+        const os = row[2] || '';
+        const dificultad = row[3] || '';
+        const tecnicas = row[4]?.includes("\n") ? row[4].replace(/\n/g, ", ") : row[4] || '';
+        const certificaciones = row[5]?.includes("\n") ? row[5].replace(/\n/g, ", ") : row[5] || '';
+        const writeup = row[6]?.includes("\n") ? row[6].replace(/\n/g, ", ") : row[6] || '';
         
         const boxData = {
           nombre,
@@ -67,6 +62,9 @@ function formatDataJson(data) {
 // Configurar rutas
 app.get('/api/boxes', async (req, res) => {
   const data = await getSheetData();
+  if (data.error) {
+    return res.status(500).json(data);
+  }
   const formattedData = formatDataJson(data);
   res.json(formattedData);
 });
@@ -74,15 +72,36 @@ app.get('/api/boxes', async (req, res) => {
 app.get('/api/box/:nombre', async (req, res) => {
   const nombre = req.params.nombre;
   const data = await getSheetData();
+  if (data.error) {
+    return res.status(500).json(data);
+  }
   const formattedData = formatDataJson(data);
   
-  for (const box of formattedData) {
-    if (box.nombre.toLowerCase() === nombre.toLowerCase()) {
-      return res.json(box);
-    }
+  const box = formattedData.find(box => box.nombre.toLowerCase() === nombre.toLowerCase());
+  if (box) {
+    return res.json(box);
   }
-  
   return res.status(404).json({ error: "Box no encontrado" });
+});
+
+// Nuevo endpoint: Buscar boxes por certificación
+app.get('/api/certs/:certificacion', async (req, res) => {
+  const certificacion = req.params.certificacion;
+  const data = await getSheetData();
+  if (data.error) {
+    return res.status(500).json(data);
+  }
+  const formattedData = formatDataJson(data);
+  
+  // Filtrar boxes que incluyan la certificación (ignorando mayúsculas/minúsculas)
+  const matchingBoxes = formattedData.filter(box => 
+    box.certificaciones.toLowerCase().includes(certificacion.toLowerCase())
+  );
+  
+  if (matchingBoxes.length > 0) {
+    return res.json(matchingBoxes);
+  }
+  return res.status(404).json({ error: `No se encontraron boxes con la certificación "${certificacion}"` });
 });
 
 app.get('/', (req, res) => {
@@ -92,6 +111,7 @@ app.get('/', (req, res) => {
     <ul>
       <li>/api/boxes - Obtener todos los boxes</li>
       <li>/api/box/&lt;nombre&gt; - Obtener un box específico por nombre</li>
+      <li>/api/certs/&lt;certificacion&gt; - Obtener todos los boxes con una certificación específica (ej. OSCP)</li>
     </ul>
   `);
 });
