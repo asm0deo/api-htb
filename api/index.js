@@ -1,4 +1,3 @@
-// Importaciones requeridas
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -65,14 +64,13 @@ function formatDataJson(data) {
   return formattedData;
 }
 
-// Endpoint para obtener todos los boxes
+// Configurar rutas
 app.get('/api/boxes', async (req, res) => {
   const data = await getSheetData();
   const formattedData = formatDataJson(data);
   res.json(formattedData);
 });
 
-// Endpoint para obtener un box específico por nombre
 app.get('/api/box/:nombre', async (req, res) => {
   const nombre = req.params.nombre;
   const data = await getSheetData();
@@ -87,7 +85,6 @@ app.get('/api/box/:nombre', async (req, res) => {
   return res.status(404).json({ error: "Box no encontrado" });
 });
 
-// Página de inicio con información básica sobre la API
 app.get('/', (req, res) => {
   res.send(`
     <h1>API de HackTheBox</h1>
@@ -99,8 +96,13 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Iniciar el servidor en el puerto 80
-const PORT = 80;
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
-});
+// Exportar la app de Express para Vercel
+module.exports = app;
+
+// Solo para desarrollo local
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  app.listen(PORT, () => {
+    console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
+  });
+}
