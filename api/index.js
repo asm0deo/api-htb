@@ -7,7 +7,7 @@ app.use(cors());
 
 // Configuración de Google Sheets
 const SHEET_ID = "1dzvaGlT_0xnT-PGO27Z_4prHgA8PHIpErmoWdlUrSoA";
-const API_KEY = process.env.GOOGLE_SHEETS_API_KEY || "AIzaSyDzztAdQMG0a98HG4hgDAh0RXK7tBCW5Cg";
+const API_KEY = process.env.NEXT_PUBLIC_GOOGLE_SHEETS_API_KEY;
 const URL = `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/HackTheBox?key=${API_KEY}`;
 
 /**
